@@ -1,0 +1,165 @@
+
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<title>Ruleta de Factorización</title>
+<style>
+    body {
+      background-color: #004d00;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      color: white;
+    }
+    #rouletteCanvas {
+      margin-top: 60px;
+    }
+    #pointer {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-top: 40px solid yellow;
+      z-index: 10;
+    }
+    #spinButton {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 18px;
+      background-color: gold;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 20px;
+      color: #ffff66;
+    }
+  </style>
+</head>
+<body><h1 style="text-align: center; font-family: Arial; margin-top: 20px;">Ruleta de factorización por diferencia de cuadrados</h1>
+<div id="pointer"></div>
+<canvas height="600" id="rouletteCanvas" width="600"></canvas>
+<br/>
+<button id="spinButton">Girar</button>
+<div id="result"></div>
+<script>
+    const canvas = document.getElementById("rouletteCanvas");
+    const ctx = canvas.getContext("2d");
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 250;
+    const numSlots = 38;
+    const exercises = [
+      "x² - 9", "25 - y²", "9x² - 16", "4x² - 36", "49a² - b²", "(2x+3)² - 49", "x⁴ - 16", "36y² - 25",
+      "121 - 4x²", "(3x-1)² - 4", "8x² - 2", "50 - 2x²", "x² - (y+1)²", "2x² - 18", "729 - x²", "169x² - 1",
+      "49x² - 36y²", "(x+2)² - 9", "x²y² - 36", "81m² - 100", "x⁶ - 64", "100x⁴ - 81", "x⁶ - 1", "(5x+2)² - (3x-1)²",
+      "4x⁴ - 81", "x⁸ - 1", "2a⁴ - 18a²", "121x⁴ - 16", "81x² - (2y+5)²", "16x⁶ - 25", "45² - (7z)²", "(x-3)² - 16",
+      "4x²y² - 9z²", "(x²+2)² - 9", "1024 - x¹⁰", "49x⁴ - (3x+1)²", "16x⁴ - 1", "a⁸ - 81b⁸"
+    ];
+
+    const colors = [];
+    for (let i = 0; i < numSlots; i++) {
+      if (i === 0 || i === 37) {
+        colors.push("green");
+      } else {
+        colors.push(i % 2 === 0 ? "red" : "black");
+      }
+    }
+
+    let anglePerSlot = (2 * Math.PI) / numSlots;
+    let currentAngle = 0;
+    let spinning = false;
+    let winningIndex = null;
+
+    function drawRoulette(highlightIndex = null) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < numSlots; i++) {
+        let startAngle = currentAngle + i * anglePerSlot;
+        let endAngle = startAngle + anglePerSlot;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = (i === highlightIndex) ? "#ffff00" : colors[i];
+        ctx.fill();
+
+        // Flashing effect
+        if (i === highlightIndex && flashing) {
+          ctx.fillStyle = flashingOn ? "#ffff00" : colors[i];
+          ctx.fill();
+        }
+
+        // Draw text
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(startAngle + anglePerSlot / 2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.fillText(exercises[i], radius - 10, 0);
+        ctx.restore();
+      }
+    }
+
+    let flashing = false;
+    let flashingOn = true;
+    function startFlashing(index) {
+      flashing = true;
+      let count = 0;
+      const interval = setInterval(() => {
+        flashingOn = !flashingOn;
+        drawRoulette(index);
+        count++;
+        if (count > 10) {
+          clearInterval(interval);
+          flashing = false;
+        }
+      }, 300);
+    }
+
+    function spinRoulette() {
+      if (spinning) return;
+      spinning = true;
+      document.getElementById("result").textContent = "";
+      let spinAngle = Math.random() * 360 + 360 * 3;
+      let duration = 4000;
+      let start = null;
+
+      function animate(timestamp) {
+        if (!start) start = timestamp;
+        let progress = timestamp - start;
+        let angle = easeOut(progress / duration) * spinAngle;
+        currentAngle = (angle * Math.PI / 180) % (2 * Math.PI);
+        drawRoulette();
+        if (progress < duration) {
+          requestAnimationFrame(animate);
+        } else {
+          spinning = false;
+          let pointerAngle = 3 * Math.PI / 2;
+          let adjustedAngle = (2 * Math.PI - currentAngle + pointerAngle) % (2 * Math.PI);
+          winningIndex = Math.floor(adjustedAngle / anglePerSlot);
+          drawRoulette(winningIndex);
+          startFlashing(winningIndex);
+          document.getElementById("result").textContent = "Ejercicio: " + exercises[winningIndex];
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    function easeOut(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+
+    drawRoulette();
+    document.getElementById("spinButton").addEventListener("click", spinRoulette);
+  </script>
+</body>
+</html>
